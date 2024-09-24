@@ -40,6 +40,7 @@ public class TaskExecutorImpl implements TaskExecutor {
 
     private final ManagedExecutor executor;
     private final Map<String, Future<?>> runningTasks = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> cancelledTasks = new ConcurrentHashMap<>();
 
     @Inject
     public TaskExecutorImpl(ManagedExecutor executor) {
@@ -55,10 +56,43 @@ public class TaskExecutorImpl implements TaskExecutor {
             BiFunction<T, Throwable, R> errorHandler,
             BiConsumer<Request, R> callbackSender) {
         log.debug("Starting the task with ID={}", taskID);
+
         runningTasks.put(
                 taskID,
                 executor.supplyAsync(() -> syncExecutor.apply(request))
                         .exceptionally(t -> errorHandler.apply(request, t))
                         .thenAccept(res -> callbackSender.accept(callbackRequest, res)));
+    }
+
+    @Override
+    public <T, R> void executeAsyncTask(
+            String taskID,
+            Request callbackRequest,
+            T request,
+            Function<T, RunnableTask<R>> runnableTaskProvider,
+            BiFunction<T, Throwable, R> errorHandler,
+            BiConsumer<Request, R> callbackSender) {
+        log.debug("Starting the task with ID={}", taskID);
+
+        RunnableTask<R> runnableTask = runnableTaskProvider.apply(request);
+        cancelledTasks.put(taskID, false);
+
+        runningTasks.put(
+                taskID,
+                executor.supplyAsync(() -> computeRunnableTask(taskID, runnableTask))
+                        .exceptionally(t -> errorHandler.apply(request, t))
+                        .thenAccept(res -> callbackSender.accept(callbackRequest, res)));
+    }
+
+    private <R> R computeRunnableTask(String taskId, RunnableTask<R> runnableTask) {
+        while (!runnableTask.isFinished()) {
+            if (cancelledTasks.get(taskId) != null && runnableTask.canCancelBeforeNextStep()) {
+                throw new RuntimeException("Cancelled");
+            }
+
+            runnableTask.runNextStep();
+        }
+
+        return runnableTask.getResult();
     }
 }

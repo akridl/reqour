@@ -47,4 +47,24 @@ public interface TaskExecutor {
             Function<T, R> syncExecutor,
             BiFunction<T, Throwable, R> errorHandler,
             BiConsumer<Request, R> callbackSender);
+
+    /**
+     * Execute the {@link RunnableTask<R>} asynchronously.
+     *
+     * @param taskID ID of the task
+     * @param callbackRequest request identifying where to send the callback
+     * @param request input request of the synchronous executor
+     * @param runnableTaskProvider TODO
+     * @param errorHandler handle the error, and create the default result
+     * @param callbackSender callback sender
+     * @param <T> request type
+     * @param <R> result type
+     */
+    <T, R> void executeAsyncTask(
+            String taskID,
+            Request callbackRequest,
+            T request,
+            Function<T, RunnableTask<R>> runnableTaskProvider,
+            BiFunction<T, Throwable, R> errorHandler,
+            BiConsumer<Request, R> callbackSender);
 }
