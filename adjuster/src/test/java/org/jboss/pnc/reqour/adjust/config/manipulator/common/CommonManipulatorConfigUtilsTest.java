@@ -13,7 +13,7 @@ import java.util.Optional;
 
 import org.jboss.pnc.api.constants.BuildConfigurationParameterKeys;
 import org.jboss.pnc.api.reqour.dto.AdjustRequest;
-import org.jboss.pnc.reqour.adjust.model.LocationAndRemainingArgsOptions;
+import org.jboss.pnc.reqour.adjust.model.LocationAndRemainingAlignmentParameters;
 import org.jboss.pnc.reqour.adjust.model.UserSpecifiedAlignmentParameters;
 import org.junit.jupiter.api.Test;
 
@@ -61,12 +61,12 @@ class CommonManipulatorConfigUtilsTest {
     @Test
     void extractLocationFromUsersAlignmentParameters_noLocation_returnsUnchangedString() {
         String userSpecifiedAlignmentParams = "-Dfoo=bar  -Dbaz=baz";
-        LocationAndRemainingArgsOptions expected = LocationAndRemainingArgsOptions.builder()
+        LocationAndRemainingAlignmentParameters expected = LocationAndRemainingAlignmentParameters.builder()
                 .locationOption(Optional.empty())
-                .remainingArgs(userSpecifiedAlignmentParams)
+                .remainingAlignmentParameters(userSpecifiedAlignmentParams)
                 .build();
 
-        LocationAndRemainingArgsOptions actual = CommonManipulatorConfigUtils
+        LocationAndRemainingAlignmentParameters actual = CommonManipulatorConfigUtils
                 .extractLocationFromUsersAlignmentParameters(
                         userSpecifiedAlignmentParams,
                         FILE_SHORT_OPTION_NAME,
@@ -78,12 +78,12 @@ class CommonManipulatorConfigUtilsTest {
     @Test
     void extractLocationFromUsersAlignmentParameters_withShortLocationOption_returnsParametersWithoutLocation() {
         String userSpecifiedAlignmentParams = "-Dfoo=bar -f /tmp/location -Dbaz=baz";
-        LocationAndRemainingArgsOptions expected = LocationAndRemainingArgsOptions.builder()
+        LocationAndRemainingAlignmentParameters expected = LocationAndRemainingAlignmentParameters.builder()
                 .locationOption(Optional.of("-f /tmp/location"))
-                .remainingArgs("-Dfoo=bar  -Dbaz=baz")
+                .remainingAlignmentParameters("-Dfoo=bar  -Dbaz=baz")
                 .build();
 
-        LocationAndRemainingArgsOptions actual = CommonManipulatorConfigUtils
+        LocationAndRemainingAlignmentParameters actual = CommonManipulatorConfigUtils
                 .extractLocationFromUsersAlignmentParameters(
                         userSpecifiedAlignmentParams,
                         FILE_SHORT_OPTION_NAME,
@@ -95,12 +95,12 @@ class CommonManipulatorConfigUtilsTest {
     @Test
     void extractLocationFromUsersAlignmentParameters_withLongLocationOption_returnsParametersWithoutLocation() {
         String userSpecifiedAlignmentParams = "-Dfoo=bar --file=/tmp/location -Dbaz=baz";
-        LocationAndRemainingArgsOptions expected = LocationAndRemainingArgsOptions.builder()
+        LocationAndRemainingAlignmentParameters expected = LocationAndRemainingAlignmentParameters.builder()
                 .locationOption(Optional.of("--file=/tmp/location"))
-                .remainingArgs("-Dfoo=bar  -Dbaz=baz")
+                .remainingAlignmentParameters("-Dfoo=bar  -Dbaz=baz")
                 .build();
 
-        LocationAndRemainingArgsOptions actual = CommonManipulatorConfigUtils
+        LocationAndRemainingAlignmentParameters actual = CommonManipulatorConfigUtils
                 .extractLocationFromUsersAlignmentParameters(
                         userSpecifiedAlignmentParams,
                         FILE_SHORT_OPTION_NAME,
