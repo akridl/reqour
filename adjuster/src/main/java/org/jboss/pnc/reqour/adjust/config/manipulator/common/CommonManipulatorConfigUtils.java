@@ -32,10 +32,11 @@ import org.jboss.pnc.reqour.adjust.config.AdjustConfig;
 import org.jboss.pnc.reqour.adjust.config.BuildCategoryConfig;
 import org.jboss.pnc.reqour.adjust.exception.AdjusterException;
 import org.jboss.pnc.reqour.adjust.model.ExecutionRootOverrides;
-import org.jboss.pnc.reqour.adjust.model.LocationAndRemainingAlignmentParameters;
 import org.jboss.pnc.reqour.adjust.model.UserSpecifiedAlignmentParameters;
 import org.jboss.pnc.reqour.common.utils.IOUtils;
 
+import lombok.Builder;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -90,42 +91,14 @@ public class CommonManipulatorConfigUtils {
                 locationLongOption);
 
         List<String> parsedUserSpecifiedAlignmentParameters = parseUserSpecifiedAlignmentParametersWithoutLocation(
-                locationAndRemainingAlignmentParameters.getRemainingAlignmentParameters());
-        if (locationAndRemainingAlignmentParameters.getLocationOption().isEmpty()) {
-            return UserSpecifiedAlignmentParameters.withoutSubFolder(parsedUserSpecifiedAlignmentParameters);
-        }
+                locationAndRemainingAlignmentParameters.remainingAlignmentParameters);
 
-        Path folderWithResultsFile = computeFolderWithResults(
-                locationShortOption,
-                locationLongOption,
-                locationAndRemainingAlignmentParameters.getLocationOption().get());
         return UserSpecifiedAlignmentParameters.builder()
-                .subFolderWithResults(folderWithResultsFile)
+                .locationOption(
+                        locationAndRemainingAlignmentParameters.locationOption
+                                .map(l -> extractLocationPath(locationShortOption, locationLongOption, l)))
                 .alignmentParameters(parsedUserSpecifiedAlignmentParameters)
                 .build();
-    }
-
-    private static Path computeFolderWithResults(
-            String locationShortOption,
-            String locationLongOption,
-            String location) {
-        CommandLineParser parser = new DefaultParser();
-        final Options options = new Options();
-        options.addOption(
-                Option.builder()
-                        .option(locationShortOption)
-                        .longOpt(locationLongOption)
-                        .argName(FILE_ARG_NAME)
-                        .hasArg()
-                        .valueSeparator()
-                        .build());
-        try {
-            CommandLine parseResult = parser.parse(options, new String[] { location });
-            return extractFolderFromFile(parseResult.getOptionValue(FILE_ARG_NAME));
-        } catch (ParseException e) {
-            log.warn("Could not parse alignment parameters, returning default");
-            return UserSpecifiedAlignmentParameters.getDefaultSubFolder();
-        }
     }
 
     static List<String> parseUserSpecifiedAlignmentParametersWithoutLocation(
@@ -284,13 +257,43 @@ public class CommonManipulatorConfigUtils {
                 .build();
     }
 
-    private static Path extractFolderFromFile(String filePath) {
-        log.debug("Extracting folder from {}", filePath);
+    private static Path extractLocationPath(
+            String locationShortOption,
+            String locationLongOption,
+            String location) {
+        log.debug(
+                "Extracting location from '{}', short option: '{}', long option: '{}'",
+                location,
+                locationShortOption,
+                locationLongOption);
 
-        if (filePath == null || !filePath.contains("/")) {
-            return UserSpecifiedAlignmentParameters.getDefaultSubFolder();
+        CommandLineParser parser = new DefaultParser();
+        final Options options = new Options();
+        options.addOption(
+                Option.builder()
+                        .option(locationShortOption)
+                        .longOpt(locationLongOption)
+                        .argName(FILE_ARG_NAME)
+                        .hasArg()
+                        .valueSeparator()
+                        .build());
+        try {
+            CommandLine parseResult = parser.parse(options, new String[] { location });
+            return Path.of(parseResult.getOptionValue(FILE_ARG_NAME));
+        } catch (ParseException e) {
+            throw new AdjusterException(
+                    String.format(
+                            "Could not extract the location from '%s' with short option %s and long option %s",
+                            location,
+                            locationShortOption,
+                            locationLongOption));
         }
+    }
 
-        return Path.of(filePath.substring(0, filePath.lastIndexOf("/")));
+    @Builder
+    @Value
+    private static class LocationAndRemainingAlignmentParameters {
+        Optional<String> locationOption;
+        String remainingAlignmentParameters;
     }
 }

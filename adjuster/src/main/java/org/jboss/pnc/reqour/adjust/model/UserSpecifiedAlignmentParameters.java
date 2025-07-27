@@ -7,6 +7,7 @@ package org.jboss.pnc.reqour.adjust.model;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -21,28 +22,30 @@ import lombok.Value;
 public class UserSpecifiedAlignmentParameters {
 
     @Getter
-    private static final Path defaultSubFolder = Path.of("");
+    private static final Optional<Path> defaultLocation = Optional.empty();
 
     /**
-     * Sub-folder where is the manipulation results file located.
+     * Location option: -f/--file for maven builds, -t/--target for gradle builds.<br/>
+     * Parsed location option, e.g. specified by "--file=h2/pom.xml" for {@link org.jboss.pnc.api.enums.BuildType#MVN}
+     * builds.<br/>
+     * TODO in 3.3.0: Remove this field and extract the functionality into corresponding
+     * {@link org.jboss.pnc.reqour.adjust.provider.AdjustProvider}s.
      */
-    Path subFolderWithResults;
+    Optional<Path> locationOption;
 
     /**
+     * TODO in 3.3.0: All the user-specified alignment parameters, including the location parameter.<br/>
      * All the remaining user-specified alignment parameters.
      */
     List<String> alignmentParameters;
 
     public static UserSpecifiedAlignmentParameters defaultResult() {
-        return UserSpecifiedAlignmentParameters.builder()
-                .subFolderWithResults(defaultSubFolder)
-                .alignmentParameters(Collections.emptyList())
-                .build();
+        return UserSpecifiedAlignmentParameters.withoutLocation(Collections.emptyList());
     }
 
-    public static UserSpecifiedAlignmentParameters withoutSubFolder(List<String> alignmentParameters) {
+    public static UserSpecifiedAlignmentParameters withoutLocation(List<String> alignmentParameters) {
         return UserSpecifiedAlignmentParameters.builder()
-                .subFolderWithResults(defaultSubFolder)
+                .locationOption(defaultLocation)
                 .alignmentParameters(alignmentParameters)
                 .build();
     }

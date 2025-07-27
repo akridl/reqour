@@ -27,6 +27,7 @@ import org.jboss.pnc.reqour.adjust.config.AdjustConfig;
 import org.jboss.pnc.reqour.adjust.config.MvnProviderConfig;
 import org.jboss.pnc.reqour.adjust.config.manipulator.PmeConfig;
 import org.jboss.pnc.reqour.adjust.config.manipulator.common.CommonManipulatorConfigUtils;
+import org.jboss.pnc.reqour.adjust.exception.AdjusterException;
 import org.jboss.pnc.reqour.adjust.model.UserSpecifiedAlignmentParameters;
 import org.jboss.pnc.reqour.adjust.service.CommonManipulatorResultExtractor;
 import org.jboss.pnc.reqour.adjust.service.RootGavExtractor;
@@ -65,14 +66,18 @@ public class MvnProvider extends AbstractAdjustProvider<PmeConfig> implements Ad
         MvnProviderConfig mvnProviderConfig = adjustConfig.mvnProviderConfig();
         UserSpecifiedAlignmentParameters userSpecifiedAlignmentParameters = CommonManipulatorConfigUtils
                 .parseUserSpecifiedAlignmentParameters(adjustRequest);
-        Path subFolderWithAlignmentResultFile = workdir
-                .resolve(userSpecifiedAlignmentParameters.getSubFolderWithResults());
 
-        // immutable collection returned, so let's make it mutable, and add there the results file if needed
+        final Path subFolderWithAlignmentResultFile;
         final List<String> userAlignmentParametersWithFile = new ArrayList<>(
                 userSpecifiedAlignmentParameters.getAlignmentParameters());
-        if (!subFolderWithAlignmentResultFile.equals(workdir)) {
-            userAlignmentParametersWithFile.add("--file=" + subFolderWithAlignmentResultFile);
+        if (userSpecifiedAlignmentParameters.getLocationOption().isEmpty()) {
+            subFolderWithAlignmentResultFile = workdir;
+        } else {
+            subFolderWithAlignmentResultFile = extractDirectoryOfPomFile(
+                    workdir.resolve(userSpecifiedAlignmentParameters.getLocationOption().get()));
+            // todo in 3.3.0: stop removing & adding retrospectively the file (do NOT remove it at all, just query it from alignment options)
+            // immutable collection returned, so let's make it mutable, and add there the results file if needed
+            userAlignmentParametersWithFile.add("--file=" + userSpecifiedAlignmentParameters.getLocationOption().get());
         }
 
         config = PmeConfig.builder()
@@ -253,5 +258,20 @@ public class MvnProvider extends AbstractAdjustProvider<PmeConfig> implements Ad
             }
         }
         return subFolderTargetDirectory.resolve("alignmentReport.json");
+    }
+
+    private Path extractDirectoryOfPomFile(Path pomFile) {
+        log.debug("Extracting the directory of the pom: {}", pomFile);
+
+        if (!Files.exists(pomFile)) {
+            throw new AdjusterException(String.format("Pom file %s does not exist", pomFile));
+        }
+
+        Path pomDirectory = pomFile.getParent();
+        if (pomDirectory == null) {
+            throw new RuntimeException(String.format("Could not get the parent directory of the pom file %s", pomFile));
+        }
+
+        return pomDirectory;
     }
 }
